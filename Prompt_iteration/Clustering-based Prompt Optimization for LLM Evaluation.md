@@ -1,5 +1,9 @@
 # Clustering-based Prompt Optimization for LLM Evaluation
 
+## Paper Link
+
+https://kdd-eval-workshop.github.io/agenticai-evaluation-kdd2026/assets/papers/71_Clustering_based_Prompt_Opt.pdf
+
 ## Core Idea
 
 This paper studies how to optimize an LLM evaluator rubric when human labels and LLM evaluation calls are expensive. The target is not general task accuracy, but **human-AI agreement**: the LLM judge should reproduce expert human ratings as closely as possible.
