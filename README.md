@@ -2,7 +2,7 @@
 
 > Read papers. Steal the good ideas. Leave the vibes in markdown.
 
-This repo is a **shared snack drawer for research notes** — quick, opinionated summaries of papers about A/B testing, AI (prompt engineering, LLM-as-judge, agents), ML, measurement, calibration, and whatever else made someone go *"wait… that actually helps."*
+This repo is a **shared snack drawer for research notes** — quick, opinionated summaries of papers about A/B testing, AI, ML, measurement, calibration, recommendation systems, and whatever else made someone go *"wait… that actually helps."*
 
 No gatekeeping. No minimum citation count. If a paper is useful, weird, or sparkly enough to remember next week, it belongs here.
 
