@@ -70,7 +70,7 @@ To build intuition, here's a toy numeric example mirroring the paper's method.
 
 ### Step 2 — Fit calibration function $\mu(Y^*$) on pilot data (OLS)
 
-$\mu(Y^*$) \approx −50.3 + 2.77Y^*$
+$\mu(Y^*) \approx −50.3 + 2.77Y^*$
 
 ### Step 3 — Apply $\mu$ to a large LLM-only sample (no real humans needed)
 
