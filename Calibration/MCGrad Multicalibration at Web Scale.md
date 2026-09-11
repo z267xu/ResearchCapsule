@@ -28,21 +28,19 @@ Existing multicalibration methods are hard to use in production because they usu
 
 Start with a base probabilistic predictor:
 
-```text
-f_0(x) in [0, 1]
-```
+$f_0(x) \in [0, 1]$
+
 
 Convert it to logits and repeat:
 
-```text
-1. Add current prediction f_{t-1}(x) as an extra feature.
-2. Train a GBDT h_t(x, f_{t-1}(x)) on labels y.
+
+1. Add current prediction $f_{t-1}(x)$ as an extra feature.
+2. Train a GBDT $h_t(x, f_{t-1}(x))$ on labels y.
 3. Update the logit:
-   F_t(x) = theta_t * (F_{t-1}(x) + h_t(x, f_{t-1}(x)))
+   $F_t(x) = theta_t * (F_{t-1}(x) + h_t(x, f_{t-1}(x)))$
 4. Convert back to probability:
-   f_t(x) = sigmoid(F_t(x))
+   $f_t(x) = sigmoid(F_t(x))$
 5. Stop when validation log loss no longer improves.
-```
 
 The key trick is adding the previous prediction as a feature. This lets the tree find regions like:
 
