@@ -46,7 +46,7 @@ Mnemonic: $\Sigma_X$ is **how experiments differ**; $\Omega$ is **how noisy one 
 Each experiment has unobserved true effects $X = (P, Y)$ drawn from $\Sigma_X$. You observe noisy $\hat{X}$ with
 
 $$
-\hat{X} \mid X \;\sim\; \mathcal{N}\!\bigl(X,\; 2\Omega/n\bigr).
+\hat{X} \mid X \;\sim\; \mathcal{N}(X,\; 2\Omega/n).
 $$
 
 Launch if the blended statistic is significantly positive:
@@ -61,13 +61,13 @@ $$
 $A$ is chosen to maximize expected north-star return of that rule, not to estimate $Y$ itself:
 
 $$
-R(A) \;=\; \mathbb{E}\Bigl[Y \,\mathbf{1}\bigl\{\hat{Z}(A) > z\,\mathrm{se}(\hat{Z})\bigr\}\Bigr].
+R(A) \;=\; \mathbb{E}\left[Y \,\mathbf{1}\{\hat{Z}(A) > z\,\mathrm{se}(\hat{Z})\}\right].
 $$
 
 Closed-form approximation (accurate for large enough $n$):
 
 $$
-\tilde{A} \;\propto\; \bigl(\Sigma_X + (1+z^2)\,2\Omega/n\bigr)^{-1}\Gamma.
+\tilde{A} \;\propto\; \left(\Sigma_X + (1+z^2)\,2\Omega/n\right)^{-1}\Gamma.
 $$
 
 Read this as a **penalized regression of $Y$ on $X = (P,Y)$**. The penalty $(1+z^2)\,2\Omega/n$ is measurement error: it shrinks weight toward whichever metric is precise *within* an experiment relative to how much it varies *across* experiments.
@@ -138,7 +138,7 @@ One-sided launch threshold $z = 1.645$ ($\alpha = 0.05$), so the Chou penalty fa
 ### Step 3 — Plug into their closed form
 
 $$
-\tilde{A} \;\propto\; \bigl(\Sigma_X + (1+z^2)\,V(n)\bigr)^{-1}\Gamma,
+\tilde{A} \;\propto\; \left(\Sigma_X + (1+z^2)\,V(n)\right)^{-1}\Gamma,
 $$
 
 then drop negative weights and renormalize onto the simplex.
