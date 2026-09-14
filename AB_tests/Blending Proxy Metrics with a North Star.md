@@ -46,7 +46,7 @@ Mnemonic: $\Sigma_X$ is **how experiments differ**; $\Omega$ is **how noisy one 
 Each experiment has unobserved true effects $X = (P, Y)$ drawn from $\Sigma_X$. You observe noisy $\hat{X}$ with
 
 $$
-\hat{X} \mid X \;\sim\; \mathcal{N}(X,\; 2\Omega/n).
+\hat{X} \mid X \sim \mathcal{N}(X, 2\Omega/n).
 $$
 
 Launch if the blended statistic is significantly positive:
@@ -55,19 +55,19 @@ $$
 \hat{Z}(A) = a\,\hat{P} + (1-a)\,\hat{Y},
 \qquad
 \text{launch iff }
-\hat{Z}(A) \;>\; z\sqrt{A^\top (2\Omega/n)\,A}.
+\hat{Z}(A) > z\sqrt{A^\top (2\Omega/n)\,A}.
 $$
 
 $A$ is chosen to maximize expected north-star return of that rule, not to estimate $Y$ itself:
 
 $$
-R(A) \;=\; \mathbb{E}\left[Y \,\mathbf{1}\{\hat{Z}(A) > z\,\mathrm{se}(\hat{Z})\}\right].
+R(A) = \mathbb{E}\left[Y \,\mathbf{1}\{\hat{Z}(A) > z\,\mathrm{se}(\hat{Z})\}\right].
 $$
 
 Closed-form approximation (accurate for large enough $n$):
 
 $$
-\tilde{A} \;\propto\; \left(\Sigma_X + (1+z^2)\,2\Omega/n\right)^{-1}\Gamma.
+\tilde{A} \propto \left(\Sigma_X + (1+z^2)\,2\Omega/n\right)^{-1}\Gamma.
 $$
 
 Read this as a **penalized regression of $Y$ on $X = (P,Y)$**. The penalty $(1+z^2)\,2\Omega/n$ is measurement error: it shrinks weight toward whichever metric is precise *within* an experiment relative to how much it varies *across* experiments.
@@ -112,12 +112,11 @@ exp   P̂ surrogate   Ŷ LLM
 Sample covariance (pp²) and $\Gamma = \mathrm{Cov}(X,Y)$ = last column:
 
 $$
-\Sigma_X \;=\;
-\begin{bmatrix} 0.427 & 0.312 \\ 0.312 & 0.238 \end{bmatrix},
+\Sigma_X =\begin{bmatrix} 0.427 & 0.312 \\ 0.312 & 0.238 \end{bmatrix},
 \qquad
-\Gamma \;=\; (0.312,\; 0.238),
+\Gamma = (0.312, 0.238),
 \qquad
-\rho \;\approx\; 0.98.
+\rho \approx 0.98.
 $$
 
 Historically the surrogate and the LLM delta move together. That is what will keep $a$ large until $\hat{Y}$ is very precise.
@@ -129,7 +128,7 @@ $n$ here is a **relative labeling / traffic budget** ($n = 1$ = a typical rare L
 At $n = 1$: $\mathrm{se}(\hat{P}) = 0.08$ pp, $\mathrm{se}(\hat{Y}) = 0.35$ pp, and
 
 $$
-V(n) \;=\; \frac{2\Omega}{n} \;=\; \frac{1}{n}
+V(n) = \frac{2\Omega}{n} = \frac{1}{n}
 \begin{bmatrix} 0.0064 & 0.005 \\ 0.005 & 0.1225 \end{bmatrix}.
 $$
 
@@ -138,7 +137,7 @@ One-sided launch threshold $z = 1.645$ ($\alpha = 0.05$), so the Chou penalty fa
 ### Step 3 — Plug into their closed form
 
 $$
-\tilde{A} \;\propto\; \left(\Sigma_X + (1+z^2)\,V(n)\right)^{-1}\Gamma,
+\tilde{A} \propto \left(\Sigma_X + (1+z^2)\,V(n)\right)^{-1}\Gamma,
 $$
 
 then drop negative weights and renormalize onto the simplex.
@@ -146,14 +145,13 @@ then drop negative weights and renormalize onto the simplex.
 At $n = 1$:
 
 $$
-M \;=\; \Sigma_X + 3.71\,V
-\;\approx\;
-\begin{bmatrix} 0.450 & 0.331 \\ 0.331 & 0.692 \end{bmatrix},
+M = \Sigma_X + 3.71\,V
+\approx\begin{bmatrix} 0.450 & 0.331 \\ 0.331 & 0.692 \end{bmatrix},
 \qquad
-\tilde{A} \propto M^{-1}\Gamma \;\approx\; (0.678,\; 0.020),
+\tilde{A} \propto M^{-1}\Gamma \approx (0.678, 0.020),
 $$
 
-so $A = (0.971,\; 0.029)$ — **97% surrogate, 3% LLM**.
+so $A = (0.971, 0.029)$ — **97% surrogate, 3% LLM**.
 
 As we buy more LLM labels, weight moves toward `Y` (same law as their clicks → plays schedule):
 
