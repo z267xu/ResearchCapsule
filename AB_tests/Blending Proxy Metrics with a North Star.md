@@ -31,7 +31,7 @@ Read this table before the equations. Every symbol below is an **experiment-leve
 | $\Sigma_X$ | Covariance of **true** $X$ **across experiments** (signal: how much $P$ and $Y$ really move together from test to test). |
 | $\Sigma_{\hat{X}} = \Sigma_X + 2\Omega/n$ | Total covariance of the **observed** estimates = cross-experiment signal + within-experiment noise. |
 | $\Gamma = \mathrm{Cov}(X, Y)$ | Last column of $\Sigma_X$: how each component of $X$ co-moves with the north star. $\Gamma_P = \mathrm{Cov}(P,Y)$, $\Gamma_Y = \mathrm{Var}(Y)$. |
-| $A = (a,\,1-a)$ | Blend weights, nonnegative and summing to 1. $a$ = weight on the proxy. |
+| $A = (a, 1-a)$ | Blend weights, nonnegative and summing to 1. $a$ = weight on the proxy. |
 | $\hat{Z}(A)$ | Blended launch statistic $A^\top \hat{X}$. |
 | $z$ | Critical value for “significantly $> 0$” (e.g. $z = 1.645$ for one-sided $\alpha = 0.05$). |
 | $R(A)$ | **Expected north-star return** of the rule “launch iff $\hat{Z}(A)$ is significant”: $\mathbb{E}[Y \cdot \mathbf{1}\{\text{launch}\}]$. Not an estimate of $Y$. |
@@ -52,25 +52,25 @@ $$
 Launch if the blended statistic is significantly positive:
 
 $$
-\hat{Z}(A) = a\,\hat{P} + (1-a)\,\hat{Y},
+\hat{Z}(A) = a\hat{P} + (1-a)\hat{Y},
 \qquad
 \text{launch iff }
-\hat{Z}(A) > z\sqrt{A^\top (2\Omega/n)\,A}.
+\hat{Z}(A) > z\sqrt{A^\top (2\Omega/n) A}.
 $$
 
 $A$ is chosen to maximize expected north-star return of that rule, not to estimate $Y$ itself:
 
 $$
-R(A) = \mathbb{E}\left[Y \,\mathbf{1}\{\hat{Z}(A) > z\,\mathrm{se}(\hat{Z})\}\right].
+R(A) = \mathbb{E}\left[Y \mathbf{1}\{\hat{Z}(A) > z\mathrm{se}(\hat{Z})\}\right].
 $$
 
 Closed-form approximation (accurate for large enough $n$):
 
 $$
-\tilde{A} \propto \left(\Sigma_X + (1+z^2)\,2\Omega/n\right)^{-1}\Gamma.
+\tilde{A} \propto \left(\Sigma_X + (1+z^2) 2\Omega/n\right)^{-1}\Gamma.
 $$
 
-Read this as a **penalized regression of $Y$ on $X = (P,Y)$**. The penalty $(1+z^2)\,2\Omega/n$ is measurement error: it shrinks weight toward whichever metric is precise *within* an experiment relative to how much it varies *across* experiments.
+Read this as a **penalized regression of $Y$ on $X = (P,Y)$**. The penalty $(1+z^2) 2\Omega/n$ is measurement error: it shrinks weight toward whichever metric is precise *within* an experiment relative to how much it varies *across* experiments.
 
 Consequences:
 
@@ -137,7 +137,7 @@ One-sided launch threshold $z = 1.645$ ($\alpha = 0.05$), so the Chou penalty fa
 ### Step 3 — Plug into their closed form
 
 $$
-\tilde{A} \propto \left(\Sigma_X + (1+z^2)\,V(n)\right)^{-1}\Gamma,
+\tilde{A} \propto \left(\Sigma_X + (1+z^2) V(n)\right)^{-1}\Gamma,
 $$
 
 then drop negative weights and renormalize onto the simplex.
@@ -145,7 +145,7 @@ then drop negative weights and renormalize onto the simplex.
 At $n = 1$:
 
 $$
-M = \Sigma_X + 3.71\,V
+M = \Sigma_X + 3.71 V
 \approx\begin{bmatrix} 0.450 & 0.331 \\ 0.331 & 0.692 \end{bmatrix},
 \qquad
 \tilde{A} \propto M^{-1}\Gamma \approx (0.678, 0.020),
