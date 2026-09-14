@@ -15,12 +15,19 @@ LLM evaluation is a bottleneck:
 - holistic LLM judges give opaque scores that are hard to debug,
 - a single scalar does not tell whether failure is factuality, relevance, fluency, etc.
 
-The premise:
+The premise: ask many small checkable questions instead of one broad judgment.
 
-```text
-Ask many small checkable questions
-instead of one broad judgment
-```
+## Terminology
+
+| Symbol | Meaning |
+|---|---|
+| $T$ | Task prompt being evaluated / generated. |
+| $R = \{r_1,\ldots,r_K\}$ | Requirements extracted from $T$. |
+| $Q_d$ | Atomic yes/no questions for quality dimension $d$. |
+| $Q = \bigcup_d Q_d$ | Full question set. |
+| $f_E(x,y,q_i) \in \{0,1\}$ | Evaluator answer to question $q_i$ on input $x$ and output $y$. |
+| $S_d(x,y)$ | Mean of answers in dimension $d$. |
+| $S(x,y)$ | Mean over all $N$ questions. Both scores live in $[0,1]$. |
 
 ## Method
 Three components:
@@ -39,29 +46,16 @@ Step 1: summarize T into requirements R = {r1, ..., rK}
 Step 2: decompose each requirement into atomic yes/no questions
 ```
 
-Questions are grouped by dimensions (e.g., coherence, consistency, fluency, relevance):
-
-```text
-Q = union_d Q_d
-```
+Questions are grouped by dimensions (e.g., coherence, consistency, fluency, relevance): $Q = \bigcup_d Q_d$.
 
 ### 2. Evaluation and scoring
-For each question `q_i`:
+For each question $q_i$, the evaluator returns $f_E(x,y,q_i) \in \{0,1\}$ plus a short explanation.
 
-```text
-f_E(x, y, q_i) ? {0, 1}
-```
-
-plus a short explanation.
-
-Scores:
-
-```text
-S_d(x, y) = average of answers in dimension d
-S(x, y)   = average over all N questions
-```
-
-Both lie in `[0, 1]`.
+$$
+S_d(x,y) = \frac{1}{|Q_d|}\sum_{q \in Q_d} f_E(x,y,q),
+\qquad
+S(x,y) = \frac{1}{N}\sum_{q \in Q} f_E(x,y,q).
+$$
 
 ### 3. Prompt optimization from binary feedback
 
@@ -111,9 +105,7 @@ yes, yes, no, yes
 
 Then:
 
-```text
-S_consistency = 0.75
-```
+$S_{\mathrm{consistency}} = 0.75$
 
 with an explanation pointing to the invented causal claim. That failure can also become a lesson for prompt update:
 

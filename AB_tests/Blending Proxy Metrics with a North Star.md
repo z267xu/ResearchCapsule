@@ -61,7 +61,7 @@ $$
 $A$ is chosen to maximize expected north-star return of that rule, not to estimate $Y$ itself:
 
 $$
-R(A) = \mathbb{E}\left[Y \mathbf{1}\{\hat{Z}(A) > z\mathrm{se}(\hat{Z})\}\right].
+R(A) = \mathbb{E}\left[Y \mathbf{1}_{\{\hat{Z}(A) > z\mathrm{se}(\hat{Z})\}}\right].
 $$
 
 Closed-form approximation (accurate for large enough $n$):

@@ -24,39 +24,41 @@ Is the model calibrated not only globally, but also inside many subgroups?
 
 Existing multicalibration methods are hard to use in production because they usually require users to manually define all groups, do not scale well, or hurt metrics like log loss and PRAUC.
 
+## Terminology
+
+| Symbol | Meaning |
+|---|---|
+| $x$ | Features of one example. |
+| $Y \in \{0,1\}$ | Binary label. |
+| $f_t(x) \in [0,1]$ | Predicted probability after round $t$. $f_0$ is the base model. |
+| $F_t(x)$ | Logit of $f_t$. |
+| $h_t$ | GBDT trained at round $t$, with $f_{t-1}(x)$ as an extra feature. |
+| $\theta_t$ | Logit rescaling / step size at round $t$. |
+| $T$ | Number of boosting rounds kept (0 means “keep the original model”). |
+
 ## Method
 
-Start with a base probabilistic predictor:
+Start with a base probabilistic predictor $f_0(x) \in [0,1]$. Convert it to logits and repeat:
 
-$f_0(x) \in [0, 1]$
+1. Add the current prediction $f_{t-1}(x)$ as an extra feature.
+2. Train a GBDT $h_t(x, f_{t-1}(x))$ on labels $Y$.
+3. Update the logit and convert back:
 
+$$
+F_t(x) = \theta_t \left(F_{t-1}(x) + h_t(x, f_{t-1}(x))\right),
+\qquad
+f_t(x) = \mathrm{sigmoid}(F_t(x)).
+$$
 
-Convert it to logits and repeat:
+4. Stop when validation log loss no longer improves.
 
+The key trick is adding the previous prediction as a feature. This lets the tree find regions like “feature pattern + prediction interval,” which correspond naturally to multicalibration groups.
 
-1. Add current prediction $f_{t-1}(x)$ as an extra feature.
-2. Train a GBDT $h_t(x, f_{t-1}(x))$ on labels y.
-3. Update the logit:
-   $F_t(x) = theta_t * (F_{t-1}(x) + h_t(x, f_{t-1}(x)))$
-4. Convert back to probability:
-   $f_t(x) = sigmoid(F_t(x))$
-5. Stop when validation log loss no longer improves.
+In simplified form, MCGrad tries to drive this close to zero for many tree-defined group functions $h$:
 
-The key trick is adding the previous prediction as a feature. This lets the tree find regions like:
-
-```text
-feature pattern + prediction interval
-```
-
-which corresponds naturally to multicalibration groups.
-
-In simplified form, MCGrad tries to make this close to zero:
-
-```text
-E[h(X, f(X)) * (Y - f(X))] ≈ 0
-```
-
-for many tree-defined group functions `h`.
+$$
+\mathbb{E}\left[h(X, f(X)) \cdot (Y - f(X))\right] \approx 0.
+$$
 
 ## Safety / Overfitting Controls
 

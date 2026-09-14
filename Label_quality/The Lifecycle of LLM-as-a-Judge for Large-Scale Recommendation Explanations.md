@@ -9,6 +9,20 @@ Netflix treats a production LLM judge as a four-phase lifecycle — birth, rubri
 ## Core Problem
 They generate hundreds of thousands of member-facing recommendation explanations per week. Human eval cannot cover that volume. A static LLM judge, scored once on JudgeBench-style data, will drift as the catalog, recommender, and “what good looks like” change. Worse: if the judge is also the critic that tells the generator how to revise, a **right fail for the wrong reason** poisons the next draft.
 
+## Terminology
+
+| Symbol | Meaning |
+|---|---|
+| $\ell_J(x), \ell_H(x)$ | Judge / human pass–fail labels on explanation $x$. |
+| $r_J(x), r_H(x)$ | Judge / human free-text reasons. |
+| $M$ | Rationale meta-judge: $M(r_J, r_H) \in \{\mathrm{agree}, \mathrm{mismatch}\}$ on agreed-fails only. |
+| $\mathrm{Spec}$ | Fail-recall: fraction of human-fails the judge also fails. |
+| $\mathrm{Rec}$ | Pass-recall: fraction of human-passes the judge also passes. |
+| $\mathrm{RA}_{\mathrm{neg}}$ | Fraction of human-fails where the judge fails **and** $M$ says the reasons agree. |
+| $s$ | Weighted training score. Weights: $w_s=3$, $w_r=w_{ra}=1$. |
+| $K$ | Revision budget (production $K=3$). |
+| $M(J), M(H)$ | A weekly alignment metric for the judge vs each human rater (Phase IV). |
+
 ## Method
 Four phases, one judge.
 
@@ -32,15 +46,19 @@ The meta-judge `M` compares judge reason vs human rationale only on agreed-fails
 
 They optimize a weighted score, **specificity first**:
 
-```text
-Spec  = fail-recall   (catch bad explanations)
-Rec   = pass-recall   (don't over-reject good ones)
-RA_neg = fraction of human-fails where judge also fails AND agrees on why
+$$
+\mathrm{Spec} = \frac{|\{x: \ell_J=\mathrm{fail}, \ell_H=\mathrm{fail}\}|}{|\{x: \ell_H=\mathrm{fail}\}|},
+\qquad
+\mathrm{Rec} = \frac{|\{x: \ell_J=\mathrm{pass}, \ell_H=\mathrm{pass}\}|}{|\{x: \ell_H=\mathrm{pass}\}|},
+$$
 
-s = 3 * Spec + 1 * Rec + 1 * RA_neg
-```
+$$
+\mathrm{RA}_{\mathrm{neg}} = \frac{|\{x \in \mathcal{N}: M(r_J,r_H)=\mathrm{agree}\}|}{|\{x: \ell_H=\mathrm{fail}\}|},
+\qquad
+s = 3\cdot\mathrm{Spec} + \mathrm{Rec} + \mathrm{RA}_{\mathrm{neg}}.
+$$
 
-False pass is served to members. False fail only gets revised or dropped. So they overweight catching bad explanations.
+$\mathcal{N}$ is the agreed-fail set (both said fail). False pass is served to members. False fail only gets revised or dropped. So they overweight catching bad explanations.
 
 RART is a greedy, single-objective special case of GEPA. The textual gradient is over **rationale mismatches**, not generations. They did not compare against GEPA/TextGrad.
 
@@ -48,9 +66,9 @@ RART is a greedy, single-objective special case of GEPA. The textual gradient is
 
 **Monitoring.** Weekly ~300-example sample, stratified across served / revised / dropped, biased to new titles, >=3 raters, majority label. Judge must stay inside a **human-disagreement band**, not a fixed threshold:
 
-```text
-M(judge) >= mean(M(raters)) - 2 * sd(M(raters))
-```
+$$
+M(J) \ge \mathrm{mean}(M(H)) - 2 \cdot \mathrm{sd}(M(H)).
+$$
 
 Harder weeks widen the band. They also check new titles separately so this is a shift detector, not just a regression test. Drift stages a new rubric behind manual review, with rollback. Since launch the judge has stayed in-band — the auto re-tune path has never fired in production (only validated offline). Weekly review still found qualitative rubric gaps (phrasing confidence, stand-up genre mismatches, “passes every criterion but still confusing”) that agreement scores missed.
 
@@ -71,7 +89,7 @@ Toy numbers on 10 human-fail cases:
 2 caught with wrong reason
 1 missed (false pass)
 
-Spec  = 9/10 = 0.90
+Spec = 9/10 = 0.90
 RA_neg = 7/10 = 0.70
 ```
 
@@ -127,7 +145,7 @@ Other fail types: offensive/exclusionary copy; empty generic (“A great show yo
 | Fail, rewrite works | Andor + a cleaner line |
 | Fail three times | Andor **with no explanation** (missing a reason beats a bad one) |
 
-## Terminology
+## Labels vs reasons
 
 **Agreed-fail** is only about labels, not reasons:
 

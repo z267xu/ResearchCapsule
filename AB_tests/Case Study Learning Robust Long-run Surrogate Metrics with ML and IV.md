@@ -19,47 +19,42 @@ Simple surrogates can be unreliable because:
 - historical A/B-test meta-analysis may use stale data;
 - linear models may miss nonlinear relationships.
 
+## Terminology
+
+| Symbol | Meaning |
+|---|---|
+| $Y$ | Long-run outcome (BV1 binary / BV2 count). |
+| $X$ | Short-run engagement features (likes, sessions, time). **Stage-1 label, not Stage-1 input.** |
+| $W$ | Known confounders (country, tenure, device). Used in both stages. |
+| $Z$ | Randomized A/B assignments (instruments). |
+| $h$ | Stage-1 model: reconstruct engagement from $(Z,W)$. |
+| $\hat{X} = h(Z,W)$ | Debiased engagement (the part of $X$ explained by experiments). |
+| $g$ | Stage-2 model: predict $Y$ from $(\hat{X}, W)$. |
+| $\hat{Y} = g(\hat{X}, W)$ | User-level surrogate score used at inference. |
+
 ## Method
 
-Train user-level surrogate models that predict long-run business outcomes from short-run engagement features:
+Train user-level surrogate models that predict long-run business outcomes from short-run engagement features (BV1 binary, BV2 count/regression). Two-stage IV-inspired training:
 
-```text
-BV1: binary long-run business value metric
-BV2: count/regression long-run business value metric
-```
-
-Variables:
-
-```text
-Y  = long-run outcome
-X  = short-run engagement features
-W  = known confounders
-Z  = randomized A/B test assignments
-```
-
-Two-stage IV-inspired training:
-
-```text
-Stage 1:
-X_hat = h(Z, W)
-
-Stage 2:
-Y_hat = g(X_hat, W)
-```
+$$
+\hat{X} = h(Z, W),
+\qquad
+\hat{Y} = g(\hat{X}, W).
+$$
 
 ### Clarified Stage Roles
 
 | Stage | Inputs | Labels / target | Notes |
 |---|---|---|---|
-| Stage 1 | `Z`, `W` | raw `X` | learns to reconstruct engagement from instruments |
-| Stage 2 | `X_hat`, `W` | `Y` | learns long-run prediction from debiased engagement |
-| Daily inference | latest raw `X`, `W` | — | reuse fixed Stage-2 model on latest engagement |
+| Stage 1 | $Z$, $W$ | raw $X$ | learns to reconstruct engagement from instruments |
+| Stage 2 | $\hat{X}$, $W$ | $Y$ | learns long-run prediction from debiased engagement |
+| Daily inference | latest raw $X$, $W$ | — | reuse fixed Stage-2 model on latest engagement |
 
 Important distinction:
 
-- In Stage 1, raw `X` is the **label**, not the input.
-- In Stage 2, the model uses `X_hat` and `W`, not raw `X`.
-- Directly training `Y ~ X, W` can be biased by hidden confounders; Stage 1 replaces `X` with the part of engagement explained by randomized experiments.
+- In Stage 1, raw $X$ is the **label**, not the input.
+- In Stage 2, the model uses $\hat{X}$ and $W$, not raw $X$.
+- Directly training $Y \sim X, W$ can be biased by hidden confounders; Stage 1 replaces $X$ with the part of engagement explained by randomized experiments.
 
 ## Concrete Example
 
@@ -87,19 +82,7 @@ Z = {
 Y = 1   # still highly engaged 2 weeks later
 ```
 
-Stage 1 predicts debiased engagement:
-
-```text
-X_hat = h(Z, W)
-# e.g. likes=10.2, sessions=4.7, time_spent=36.5
-```
-
-Stage 2 predicts long-run outcome:
-
-```text
-Y_hat = g(X_hat, W)
-# e.g. P(BV1=1) = 0.71
-```
+Stage 1 predicts debiased engagement $\hat{X} = h(Z,W)$ (e.g. likes $= 10.2$, sessions $= 4.7$, time $= 36.5$). Stage 2 predicts $\hat{Y} = g(\hat{X},W)$, e.g. $P(\mathrm{BV1}=1) = 0.71$.
 
 In a new A/B test, aggregate daily surrogate scores by arm:
 

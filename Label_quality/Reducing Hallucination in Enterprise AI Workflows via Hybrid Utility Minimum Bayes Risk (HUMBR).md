@@ -14,44 +14,41 @@ The key insight is:
 
 Instead of trusting one model output, HUMBR generates multiple candidate outputs from different models or decoding settings, computes pairwise agreement among them, and selects the candidate closest to the consensus center. If the consensus is weak, the system abstains rather than forcing an answer.
 
+## Terminology
+
+| Symbol | Meaning |
+|---|---|
+| $x$ | Input (prompt / document / image+policy). |
+| $C = \{c_1,\ldots,c_N\}$ | Candidate outputs from $K$ models $\times$ $M$ samples. |
+| $U(c_i,c_j)$ | Pairwise utility (agreement) between two candidates. |
+| $\alpha$ | Weight on semantic vs lexical similarity. |
+| $\mathrm{Score}(c_j)$ | Mean agreement of $c_j$ with all candidates (consensus). |
+| $c^*$ | Selected candidate (closest to the consensus center). |
+| $\tau$ | Abstain threshold on $\max_j \mathrm{Score}(c_j)$. |
+| $\rho$ | Intra-model correlation of samples from the same model. |
+| $N_{\mathrm{eff}}$ | Effective sample size after that correlation. |
+
 ## Method
 
-Given an input `x`, generate a candidate set:
+Given an input $x$, generate a candidate set $C = \{c_1,\ldots,c_N\}$. Pairwise utility:
 
-```text
-C = {c_1, c_2, ..., c_N}
-```
+$$
+U(c_i, c_j) = \alpha \cdot \mathrm{semantic}(c_i,c_j) + (1-\alpha) \cdot \mathrm{lexical}(c_i,c_j).
+$$
 
-HUMBR defines a pairwise utility between candidate outputs:
+Semantic similarity is embedding cosine; lexical is ROUGE-L. Consensus score and selection:
 
-```text
-U(c_i, c_j)
-= alpha * semantic_similarity(c_i, c_j)
-+ (1 - alpha) * lexical_similarity(c_i, c_j)
-```
+$$
+\mathrm{Score}(c_j) = \frac{1}{N}\sum_i U(c_i,c_j),
+\qquad
+c^* = \arg\max_j \mathrm{Score}(c_j).
+$$
 
-In the paper, semantic similarity is computed with embedding cosine similarity, and lexical similarity is measured with ROUGE-L.
+Abstain if the best consensus is weak:
 
-Each candidate receives a consensus score:
-
-```text
-Score(c_j) = average_i U(c_i, c_j)
-```
-
-Then HUMBR selects:
-
-```text
-c* = argmax_j Score(c_j)
-```
-
-If the best score is below a threshold `tau`, the system abstains:
-
-```text
-if max_j Score(c_j) >= tau:
-    return c*
-else:
-    abstain / send to human review
-```
+$$
+\text{if } \max_j \mathrm{Score}(c_j) \ge \tau \text{ then return } c^* \text{ else abstain / human review.}
+$$
 
 This is different from asking another LLM to summarize all answers. HUMBR selects one of the original candidates, which reduces the risk that a summarizer introduces a new hallucination.
 
@@ -59,19 +56,11 @@ This is different from asking another LLM to summarize all answers. HUMBR select
 
 The paper frames hallucination mitigation as a **Minimum Bayes Risk** problem. Instead of choosing the most likely answer under one model, HUMBR chooses the answer with the lowest expected disagreement relative to the candidate distribution.
 
-The paper also models correlation among model outputs. If we use `K` models and `M` samples per model, the total number of candidates is:
+The paper also models correlation among model outputs. With $K$ models and $M$ samples per model, $N = KM$, but same-model samples are correlated:
 
-```text
-N = K * M
-```
-
-However, samples from the same model are correlated. The effective sample size is:
-
-```text
-N_eff = K * M / (1 + (M - 1) * rho)
-```
-
-where `rho` is intra-model correlation.
+$$
+N_{\mathrm{eff}} = \frac{KM}{1 + (M-1)\rho}.
+$$
 
 This gives an important operational lesson:
 
@@ -139,25 +128,15 @@ A simple majority vote would return `violation`. HUMBR-style consensus goes furt
 
 A practical pairwise utility for our workflow could be:
 
-```text
-U(C_i, C_j)
-= 0.5 * 1[label_i = label_j]
-+ 0.2 * cosine(reason_i, reason_j)
-+ 0.2 * Jaccard(evidence_i, evidence_j)
-+ 0.1 * 1[policy_node_i = policy_node_j]
-```
+$$
+U(C_i,C_j)
+= 0.5 \cdot \mathbf{1}[\mathrm{label}_i=\mathrm{label}_j]
++ 0.2 \cdot \cos(\mathrm{reason}_i,\mathrm{reason}_j)
++ 0.2 \cdot \mathrm{Jaccard}(\mathrm{evidence}_i,\mathrm{evidence}_j)
++ 0.1 \cdot \mathbf{1}[\mathrm{policy}_i=\mathrm{policy}_j].
+$$
 
-Then each candidate receives:
-
-```text
-Score(C_j) = average_i U(C_i, C_j)
-```
-
-The output with the highest consensus score becomes the selected judge output:
-
-```text
-C* = argmax_j Score(C_j)
-```
+Then $\mathrm{Score}(C_j) = \frac{1}{N}\sum_i U(C_i,C_j)$ and $C^* = \arg\max_j \mathrm{Score}(C_j)$.
 
 In the example above, `C1`, `C2`, `C3`, and `C5` form a strong consensus cluster. `C4` is an outlier. The system would accept the consensus label:
 
@@ -181,9 +160,9 @@ C5: unclear, low confidence
 
 then there is no stable consensus. Even if 3 models say `violation`, the rationales point to different policy concepts. In that case:
 
-```text
-max Score(C_j) < tau
-```
+$$
+\max_j \mathrm{Score}(C_j) < \tau
+$$
 
 The system should not trust the label:
 
