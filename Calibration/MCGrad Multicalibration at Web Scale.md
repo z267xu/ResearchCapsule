@@ -52,13 +52,55 @@ $$
 
 4. Stop when validation log loss no longer improves.
 
+**Serve time** is the same loop, not one model that eats the whole history. You store $f_0$, the trees $h_1,\ldots,h_T$, and the $\theta_t$. For one $x$:
+
+```text
+f ← f_0(x)                         # base model only sees x
+for t = 1 .. T:
+    h ← h_t(x, f)                  # this tree sees x and the latest f only
+    F ← θ_t ( logit(f) + h )
+    f ← sigmoid(F)
+return f                           # this is f_T
+```
+
+You do **not** pass $(x, f_0, f_1, \ldots, f_{t-1})$ into $f_t$. $h_t$ only gets $(x, f_{t-1})$. Older scores are already baked into $f_{t-1}$. If $T=0$, serve $f_0$ and stop.
+
 The key trick is adding the previous prediction as a feature. This lets the tree find regions like “feature pattern + prediction interval,” which correspond naturally to multicalibration groups.
+
+There is **no separate detect step**. The GBDT is trained to predict $Y$ while it can already see $f$. Globally, $Y-f$ looks like noise. A split is worth making only if some leaf has a **systematic** residual (that slice is over- or under-confident). Those leaves **are** the subgroups. Adding $h$ to the logit then nudges $f$ only in those leaves.
 
 In simplified form, MCGrad tries to drive this close to zero for many tree-defined group functions $h$:
 
 $$
 \mathbb{E}\left[h(X, f(X)) \cdot (Y - f(X))\right] \approx 0.
 $$
+
+If $h$ is “1 on this leaf, 0 elsewhere,” that equation is just: in this leaf, average $Y$ matches average $f$.
+
+## How a hidden subgroup shows up
+
+Global check can look fine while two slices cancel.
+
+```text
+Everyone with f = 0.8     1000 rows    800 positives    80%   looks calibrated
+
+  new users, f ≈ 0.8       200 rows    100 positives    50%   overconfident
+  power users, f ≈ 0.8     200 rows    180 positives    90%   underconfident
+  everyone else, f ≈ 0.8   600 rows    520 positives    87%
+```
+
+You never typed “new users.” The tree sees $(x, f_{t-1})$, including `is_new`, country, and the score. $f_{t-1}=0.8$ alone does **not** say which way to move. Same score, two leaves, opposite $h$:
+
+```text
+who              f_{t-1}   mean Y    Y − f      h in that leaf     f_t
+new user         0.80      0.50      −0.30      negative (down)    toward 0.50
+power user       0.80      0.90      +0.10      positive (up)      toward 0.90
+everyone else    0.80      ~0.80      ~0        ≈ 0                stays 0.80
+```
+
+Rule: $\mathrm{sign}(h)=\mathrm{sign}(\text{mean }Y-f)$ in the leaf. Overconfident $\Rightarrow$ pull the logit down. Underconfident $\Rightarrow$ push it up. The extra feature $f_{t-1}$ only lets the tree say “this is the 0.8 band **and** a new user,” not “anyone with 0.8 gets lowered.”
+
+Same global 0.8-bucket can stay near 80% positive. The **slices** no longer lie. If the first round cannot find a split that helps validation log loss, $T=0$ and you keep $f_0$.
 
 ## Safety / Overfitting Controls
 
