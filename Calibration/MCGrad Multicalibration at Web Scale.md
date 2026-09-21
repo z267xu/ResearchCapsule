@@ -65,6 +65,22 @@ return f                           # this is f_T
 
 You do **not** pass $(x, f_0, f_1, \ldots, f_{t-1})$ into $f_t$. $h_t$ only gets $(x, f_{t-1})$. Older scores are already baked into $f_{t-1}$. If $T=0$, serve $f_0$ and stop.
 
+Same family as gradient boosting (add a correction to the current predictor), **not** the same algorithm:
+
+```text
+vanilla GB          each round fits one stump/tree on the residual
+                    features = x only
+                    start from a constant
+
+MCGrad outer loop   each round fits a whole LightGBM on labels Y
+                    extra feature = the latest probability f_{t-1}
+                    (not residual, not f_0..f_{t-2})
+                    start from a frozen production model f_0
+                    then rescale the whole logit: F_t = θ_t (F_{t-1} + h_t)
+```
+
+Inside each $h_t$, LightGBM still does ordinary residual boosting. The extra $f_{t-1}$ column is so trees can split on **score bucket × subgroup**, which is the multicalibration group. They re-loop because after you fix groups of $f_0$, the new $f_1$ can be wrong on groups of $f_1$.
+
 The key trick is adding the previous prediction as a feature. This lets the tree find regions like “feature pattern + prediction interval,” which correspond naturally to multicalibration groups.
 
 There is **no separate detect step**. The GBDT is trained to predict $Y$ while it can already see $f$. Globally, $Y-f$ looks like noise. A split is worth making only if some leaf has a **systematic** residual (that slice is over- or under-confident). Those leaves **are** the subgroups. Adding $h$ to the logit then nudges $f$ only in those leaves.

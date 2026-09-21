@@ -58,15 +58,44 @@ If they only did exploration, the model would still love tall cards, because tho
 | Successful session | Whole-page “the session worked” (ads **and** organic). |
 
 ## Method
-Run DCO **in parallel** with ad ranking so it does not add end-to-end latency. Because the winning ad is unknown yet, you must score creatives for *all* ad candidates — hence a cheap local **pre-selection** prune, then CCFN on a dedicated cluster (sharded cache + dynamic batching).
+Method is a **serve pipeline**, not “replace clicks with delta in the warehouse.” Logs still store ordinary clicks: we showed this creative, tap or not. There is **no delta column**. Delta is a **learned leftover** on top of the ad ranker.
 
-CCFN does not relearn “this advertiser is popular.” It predicts only the **delta** vs the ad-level score. Towers get different dropout so the image tower does not overfit while the layout tower is still underfitting. Supervise the **sum** of ad logit + creative delta with the click.
+**Train** (one row = one shown creative):
 
-PAM then taxes height:
+```text
+log:   user, ad, creative, Y = clicked?
+ad model:     F_ad     (does not see which picture)
+CCFN:         O        (tries to explain Y that F_ad cannot)
+loss on:      sigmoid(F_ad + O) vs Y
+```
+
+If Nike is already a 10% advertiser, $F_{ad}$ eats that. $O$ only moves if *this picture* over- or under-performs that 10%. You cannot subtract two creatives’ CTRs on the same request: only one picture was shown. $\varepsilon$-greedy is how the other pictures get a few $Y$ rows at all.
+
+**Serve** (this is the rest of Method):
+
+```text
+retrieve ads
+  → expand each ad into creatives
+  → cheap local prune          (cannot score every gen-AI variant)
+  → CCFN O  ||  ad ranker      (parallel so latency does not stack)
+  → PAM: S = O × height tax    (not a log label)
+  → ε-greedy sometimes overrides argmax S
+```
 
 $$
 S = O \cdot P(ar_{rel}), \qquad P(ar_{rel}) = \mathrm{clip}\left(1 - \tanh\left(k(ar_{rel}-1)\right), 0, 1\right).
 $$
+
+Height is **not** learned from clicks at serve time. Columns have fixed width, so they use aspect ratio as size. $ar_{rel} = ar_{cand}/ar_{orig}$. Same height as the original $\Rightarrow ar_{rel}=1 \Rightarrow P=1$ (no tax). Taller $\Rightarrow ar_{rel}>1 \Rightarrow P<1$ (shrink $O$). Shorter $\Rightarrow$ $\tanh$ goes negative $\Rightarrow$ clip keeps $P=1$ (no bonus, only a penalty for tall).
+
+$k$ is **not** from labels. Offline replay: take logged $O$ and aspect ratios, simulate who would win at a candidate $k$, pick the $k$ whose winners match a **target average aspect ratio**.
+
+```text
+orig ar = 1.0,  k = 1
+short  ar_rel = 0.8  →  P = 1.00  →  S = O
+same   ar_rel = 1.0  →  P = 1.00  →  S = O
+tall   ar_rel = 1.5  →  tanh(0.5)≈0.46  →  P ≈ 0.54  →  S ≈ 0.54 O
+```
 
 A taller card must beat that tax. $k$ is chosen so replay hits a target average aspect ratio.
 
